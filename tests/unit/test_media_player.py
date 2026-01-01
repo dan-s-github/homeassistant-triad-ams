@@ -11,8 +11,11 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceValidationError
 from homeassistant.helpers.entity_registry import RegistryEntry
 
-from custom_components.triad_ams.media_player import TriadAmsMediaPlayer
-from custom_components.triad_ams.models import TriadAmsOutput
+from custom_components.triad_ams.media_player import (
+    TriadAmsMediaPlayer,
+    TriadAmsSourceMediaPlayer,
+)
+from custom_components.triad_ams.models import TriadAmsInput, TriadAmsOutput
 from tests.conftest import create_async_mock_method
 
 
@@ -676,3 +679,72 @@ class TestTriadAmsMediaPlayerLinkSubscription:
         media_player._linked_entity_id = "media_player.test"
         media_player._state_getter = state_getter
         assert media_player.media_content_type == "music"
+
+
+class TestTriadAmsSourceMediaPlayerAvailableRouters:
+    """Test available routable outputs on input players."""
+
+    @pytest.fixture
+    def source_media_player(
+        self, mock_config_entry: MagicMock, mock_hass: MagicMock
+    ) -> TriadAmsSourceMediaPlayer:
+        """Create a TriadAmsSourceMediaPlayer instance."""
+        input_model = TriadAmsInput(1, "Input 1", "media_player.sonos")
+        player = TriadAmsSourceMediaPlayer(input_model, mock_config_entry)
+        player.hass = mock_hass
+        return player
+
+    def test_extra_state_attributes_available_routable_players(
+        self, source_media_player: TriadAmsSourceMediaPlayer, mock_hass: MagicMock
+    ) -> None:
+        """Source player exposes available routable outputs."""
+        source_media_player.entity_id = "media_player.input_1"
+
+        # Registry entries for current config entry
+        output1_entry = MagicMock(spec=RegistryEntry)
+        output1_entry.platform = "triad_ams"
+        output1_entry.entity_id = "media_player.output_1"
+        output1_entry.unique_id = "test_entry_123_output_1"
+
+        output2_entry = MagicMock(spec=RegistryEntry)
+        output2_entry.platform = "triad_ams"
+        output2_entry.entity_id = "media_player.output_2"
+        output2_entry.unique_id = "test_entry_123_output_2"
+
+        registry = MagicMock()
+        registry.async_entries_for_config_entry.return_value = [
+            output1_entry,
+            output2_entry,
+        ]
+
+        # Output states
+        output1_state = MagicMock()
+        output1_state.attributes = {"device_class": "speaker"}
+
+        output2_state = MagicMock()
+        output2_state.attributes = {"device_class": "speaker"}
+
+        state_map = {
+            "media_player.output_1": output1_state,
+            "media_player.output_2": output2_state,
+        }
+        mock_hass.states.get.side_effect = lambda entity_id: state_map.get(entity_id)
+
+        with (
+            patch(
+                "custom_components.triad_ams.media_player.er.async_get",
+                return_value=registry,
+            ),
+            patch(
+                "custom_components.triad_ams.media_player.er.async_entries_for_config_entry",
+                return_value=[output1_entry, output2_entry],
+            ),
+        ):
+            attrs = source_media_player.extra_state_attributes
+
+        assert attrs == {
+            "available_routable_players": [
+                "media_player.output_1",
+                "media_player.output_2",
+            ]
+        }

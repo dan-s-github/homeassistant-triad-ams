@@ -772,6 +772,7 @@ class TriadAmsSourceMediaPlayer(MediaPlayerEntity):
     ) -> None:
         """Initialize a Triad AMS input proxy media player entity."""
         self.input = input_model
+        self._entry = entry
         self._group_members = group_members or []
         self._attr_unique_id = f"{entry.entry_id}_input_{input_model.number}"
         self._attr_name = input_model.name
@@ -848,6 +849,43 @@ class TriadAmsSourceMediaPlayer(MediaPlayerEntity):
         if not st:
             return None
         return st.attributes.get(key)
+
+    def _available_routable_outputs(self) -> list[str]:
+        """Return Triad output speakers available for routing to this input."""
+        if self.hass is None:
+            return []
+
+        registry = er.async_get(self.hass)
+        entries = er.async_entries_for_config_entry(registry, self._entry.entry_id)
+
+        available: list[str] = []
+        for entry in entries:
+            if entry.platform != DOMAIN:
+                continue
+            if not entry.unique_id or not re.search(r"_output_\d+$", entry.unique_id):
+                continue
+
+            state = self.hass.states.get(entry.entity_id)
+            if not state:
+                continue
+            device_class = state.attributes.get("device_class")
+            if device_class not in (
+                MediaPlayerDeviceClass.SPEAKER,
+                MediaPlayerDeviceClass.SPEAKER.value,
+            ):
+                continue
+
+            available.append(entry.entity_id)
+
+        return available
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Expose additional attributes including routable outputs."""
+        available = self._available_routable_outputs()
+        if not available:
+            return {}
+        return {"available_routable_players": available}
 
     # ---- Media info ----
     @property
@@ -941,6 +979,7 @@ class TriadAmsSourceMediaPlayer(MediaPlayerEntity):
                 new_members.append(member)
 
         self._group_members = new_members
+        # Refresh state to update extra_state_attributes with new routable players list
         self.async_write_ha_state()
 
     # The unjoin operation lives on member entities (TriadAmsMediaPlayer).
