@@ -21,6 +21,7 @@ from .coordinator import TriadCoordinator
 PLATFORMS = ["media_player"]
 
 SERVICE_TURN_ON_WITH_SOURCE = "turn_on_with_source"
+SERVICE_GET_AVAILABLE_ROUTABLE_PLAYERS = "get_available_routable_players"
 ATTR_INPUT_ENTITY_ID = "input_entity_id"
 # Target minor version for migration
 TARGET_MINOR_VERSION = 4
@@ -39,6 +40,14 @@ async def async_setup(_hass: HomeAssistant, _config: ConfigType) -> bool:
             vol.Required(ATTR_INPUT_ENTITY_ID): cv.entity_id,
         },
         func="async_turn_on_with_source",
+    )
+
+    service.async_register_platform_entity_service(
+        _hass,
+        DOMAIN,
+        SERVICE_GET_AVAILABLE_ROUTABLE_PLAYERS,
+        entity_domain=MEDIA_PLAYER_DOMAIN,
+        func="async_get_available_routable_players",
     )
 
     return True

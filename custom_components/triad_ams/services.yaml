@@ -15,3 +15,11 @@ turn_on_with_source:
             supported_features:
               - media_player.MediaPlayerEntityFeature.PLAY
               - media_player.MediaPlayerEntityFeature.PLAY_MEDIA
+
+get_available_routable_players:
+  description: "Get the list of Triad AMS output speakers available for routing to this input."
+  target:
+    entity:
+      domain: media_player
+      integration: triad_ams
+      device_class: receiver

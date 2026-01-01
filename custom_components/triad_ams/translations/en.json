@@ -20,6 +20,10 @@
                     "description": "The media player entity to use as the input source."
                 }
             }
-            }
+        },
+        "get_available_routable_players": {
+            "name": "Get Available Routable Players",
+            "description": "Get the list of Triad AMS output speakers available for routing to this input."
+        }
     }
 }

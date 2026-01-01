@@ -57,18 +57,24 @@ class TestAsyncSetup:
 
     @pytest.mark.asyncio
     async def test_async_setup_registers_service(self, hass: MagicMock) -> None:
-        """Test that async_setup registers the service."""
+        """Test that async_setup registers the services."""
         with patch(
             "custom_components.triad_ams.service.async_register_platform_entity_service"
         ) as mock_register:
             result = await async_setup(hass, {})
 
             assert result is True
-            mock_register.assert_called_once()
-            # Verify service registration
-            call_args = mock_register.call_args
-            assert call_args[1]["entity_domain"] == "media_player"
-            assert call_args[1]["schema"] is not None
+            # Should register 2 services: turn_on_with_source and get routable players
+            assert mock_register.call_count == 2
+
+            # Verify first service (turn_on_with_source)
+            first_call = mock_register.call_args_list[0]
+            assert first_call[1]["entity_domain"] == "media_player"
+            assert first_call[1]["schema"] is not None
+
+            # Verify second service (get_available_routable_players)
+            second_call = mock_register.call_args_list[1]
+            assert second_call[1]["entity_domain"] == "media_player"
 
 
 class TestAsyncSetupEntry:
