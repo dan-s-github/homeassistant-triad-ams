@@ -254,85 +254,6 @@ class TestTriadAmsMediaPlayerMediaAttributes:
         assert media_player.entity_picture == "http://example.com/art.jpg"
 
 
-class TestTriadAmsMediaPlayerAvailableJoiners:
-    """Test available join player attribute construction."""
-
-    def test_extra_state_attributes_available_join_players(
-        self, media_player: TriadAmsMediaPlayer, mock_hass: MagicMock
-    ) -> None:
-        """Media player exposes available join players from outputs and linked input."""
-        media_player.hass = mock_hass
-        media_player.entity_id = "media_player.output_1"
-        media_player._linked_entity_id = "media_player.sonos_a"
-
-        # Registry entries for current config entry
-        self_entry = MagicMock(spec=RegistryEntry)
-        self_entry.platform = "triad_ams"
-        self_entry.entity_id = "media_player.output_1"
-        self_entry.unique_id = "test_entry_123_output_1"
-
-        available_entry = MagicMock(spec=RegistryEntry)
-        available_entry.platform = "triad_ams"
-        available_entry.entity_id = "media_player.output_2"
-        available_entry.unique_id = "test_entry_123_output_2"
-
-        busy_entry = MagicMock(spec=RegistryEntry)
-        busy_entry.platform = "triad_ams"
-        busy_entry.entity_id = "media_player.output_3"
-        busy_entry.unique_id = "test_entry_123_output_3"
-
-        registry = MagicMock()
-        registry.async_entries_for_config_entry.return_value = [
-            self_entry,
-            available_entry,
-            busy_entry,
-        ]
-
-        # State map
-        available_state = MagicMock()
-        available_state.attributes = {"device_class": "speaker", "source": None}
-
-        busy_state = MagicMock()
-        busy_state.attributes = {"device_class": "speaker", "source": "Input 2"}
-
-        linked_state = MagicMock()
-        linked_state.attributes = {
-            "device_class": "speaker",
-            "group_members": ["media_player.sonos_b"],
-        }
-
-        linked_member_state = MagicMock()
-        linked_member_state.attributes = {"device_class": "speaker"}
-
-        state_map = {
-            "media_player.output_2": available_state,
-            "media_player.output_3": busy_state,
-            "media_player.sonos_a": linked_state,
-            "media_player.sonos_b": linked_member_state,
-        }
-        mock_hass.states.get.side_effect = lambda entity_id: state_map.get(entity_id)
-
-        with (
-            patch(
-                "custom_components.triad_ams.media_player.er.async_get",
-                return_value=registry,
-            ),
-            patch(
-                "custom_components.triad_ams.media_player.er.async_entries_for_config_entry",
-                return_value=[self_entry, available_entry, busy_entry],
-            ),
-        ):
-            attrs = media_player.extra_state_attributes
-
-        assert attrs == {
-            "available_join_players": [
-                "media_player.output_2",
-                "media_player.sonos_a",
-                "media_player.sonos_b",
-            ]
-        }
-
-
 class TestTriadAmsMediaPlayerServices:
     """Test service methods."""
 
@@ -682,7 +603,7 @@ class TestTriadAmsMediaPlayerLinkSubscription:
 
 
 class TestTriadAmsSourceMediaPlayerAvailableRouters:
-    """Test available routable outputs on input players."""
+    """Test get_available_routable_players service on input players."""
 
     @pytest.fixture
     def source_media_player(
@@ -694,10 +615,11 @@ class TestTriadAmsSourceMediaPlayerAvailableRouters:
         player.hass = mock_hass
         return player
 
-    def test_extra_state_attributes_available_routable_players(
+    @pytest.mark.asyncio
+    async def test_async_get_available_routable_players(
         self, source_media_player: TriadAmsSourceMediaPlayer, mock_hass: MagicMock
     ) -> None:
-        """Source player exposes available routable outputs."""
+        """Service returns available routable outputs."""
         source_media_player.entity_id = "media_player.input_1"
 
         # Registry entries for current config entry
@@ -740,9 +662,9 @@ class TestTriadAmsSourceMediaPlayerAvailableRouters:
                 return_value=[output1_entry, output2_entry],
             ),
         ):
-            attrs = source_media_player.extra_state_attributes
+            result = await source_media_player.async_get_available_routable_players()
 
-        assert attrs == {
+        assert result == {
             "available_routable_players": [
                 "media_player.output_1",
                 "media_player.output_2",
