@@ -23,3 +23,5 @@ get_available_routable_players:
       domain: media_player
       integration: triad_ams
       device_class: receiver
+  response:
+    optional: false
