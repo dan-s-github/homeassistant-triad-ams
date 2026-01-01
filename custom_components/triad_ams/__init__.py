@@ -47,6 +47,7 @@ async def async_setup(_hass: HomeAssistant, _config: ConfigType) -> bool:
         DOMAIN,
         SERVICE_GET_AVAILABLE_ROUTABLE_PLAYERS,
         entity_domain=MEDIA_PLAYER_DOMAIN,
+        schema={},
         func="async_get_available_routable_players",
     )
 
