@@ -471,6 +471,92 @@ class TriadAmsMediaPlayer(MediaPlayerEntity):
             return None
         return st.attributes.get(key)
 
+    def _available_linked_integration_players(self) -> list[str]:
+        """Return speaker media_players from the linked input's integration."""
+        if not self._linked_entity_id or self.hass is None:
+            return []
+
+        linked_state = self.hass.states.get(self._linked_entity_id)
+        if not linked_state:
+            return []
+
+        candidates = [self._linked_entity_id]
+        linked_members = linked_state.attributes.get("group_members")
+        if isinstance(linked_members, list):
+            candidates.extend(linked_members)
+
+        available: list[str] = []
+        for entity_id in candidates:
+            state = self.hass.states.get(entity_id)
+            if not state:
+                continue
+            device_class = state.attributes.get("device_class")
+            if device_class not in (
+                MediaPlayerDeviceClass.SPEAKER,
+                MediaPlayerDeviceClass.SPEAKER.value,
+            ):
+                continue
+            available.append(entity_id)
+
+        return available
+
+    def _available_output_players(self) -> list[str]:
+        """Return available Triad output players that are not routed."""
+        if self.hass is None:
+            return []
+
+        registry = er.async_get(self.hass)
+        entries = er.async_entries_for_config_entry(registry, self._entry.entry_id)
+
+        available: list[str] = []
+        for entry in entries:
+            if entry.platform != DOMAIN:
+                continue
+            if entry.entity_id == self.entity_id:
+                continue
+            if not entry.unique_id or not re.search(r"_output_\d+$", entry.unique_id):
+                continue
+
+            state = self.hass.states.get(entry.entity_id)
+            if not state:
+                continue
+            device_class = state.attributes.get("device_class")
+            if device_class not in (
+                MediaPlayerDeviceClass.SPEAKER,
+                MediaPlayerDeviceClass.SPEAKER.value,
+            ):
+                continue
+            # Consider available only when not connected to any input/source
+            if state.attributes.get("source"):
+                continue
+
+            available.append(entry.entity_id)
+
+        return available
+
+    def _available_join_players(self) -> list[str]:
+        """Return entities available for joining this player."""
+        candidates = []
+        candidates.extend(self._available_output_players())
+        candidates.extend(self._available_linked_integration_players())
+
+        seen: set[str] = set()
+        unique: list[str] = []
+        for entity_id in candidates:
+            if entity_id in seen:
+                continue
+            seen.add(entity_id)
+            unique.append(entity_id)
+        return unique
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Expose additional attributes including join candidates."""
+        available = self._available_join_players()
+        if not available:
+            return {}
+        return {"available_join_players": available}
+
     # ---- Media info ----
     @property
     def media_title(self) -> str | None:
