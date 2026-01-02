@@ -117,7 +117,9 @@ def _create_output_entities(
     output_entities: list[TriadAmsMediaPlayer] = []
     for output in outputs:
         linked_input_id = _find_linked_input(output, input_links_opt, input_entities)
-        entity = TriadAmsMediaPlayer(output, entry, input_links_opt, linked_input_id)
+        entity = TriadAmsMediaPlayer(
+            output, entry, input_links_opt, input_player_entity_id=linked_input_id
+        )
         output_entities.append(entity)
     return output_entities
 
@@ -255,7 +257,6 @@ def _setup_input_link_subscriptions(  # noqa: PLR0913
 def _cleanup_stale_entities(
     hass: HomeAssistant,
     entry: ConfigEntry,
-    inputs: list[TriadAmsInput],
     outputs: list[TriadAmsOutput],
     *,
     entity_registry_getter: Any = None,
@@ -353,7 +354,7 @@ async def async_setup_entry(
     _setup_input_link_subscriptions(
         hass, coordinator, input_links_opt, active_inputs, input_names, entities
     )
-    _cleanup_stale_entities(hass, entry, inputs, outputs)
+    _cleanup_stale_entities(hass, entry, outputs)
     _remove_orphaned_devices(hass, entry)
 
 

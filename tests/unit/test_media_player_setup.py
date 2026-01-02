@@ -13,6 +13,7 @@ from homeassistant.helpers import entity_registry as er
 
 from custom_components.triad_ams.media_player import (
     TriadAmsMediaPlayer,
+    TriadAmsSourceMediaPlayer,
     _build_input_names,
     _cleanup_stale_entities,
     _create_input_link_handler,
@@ -422,9 +423,11 @@ class TestCleanupStaleEntities:
             return mock_registry
 
         _cleanup_stale_entities(
-            mock_hass, mock_config_entry, outputs, entity_registry_getter=get_registry
+            mock_hass,
+            mock_config_entry,
+            outputs,
+            entity_registry_getter=get_registry,
         )
-
         mock_registry.async_remove.assert_called_once_with(
             "media_player.triad_ams_output_3"
         )
@@ -451,7 +454,10 @@ class TestCleanupStaleEntities:
             return mock_registry
 
         _cleanup_stale_entities(
-            mock_hass, mock_config_entry, outputs, entity_registry_getter=get_registry
+            mock_hass,
+            mock_config_entry,
+            outputs,
+            entity_registry_getter=get_registry,
         )
 
         mock_registry.async_remove.assert_not_called()
@@ -474,7 +480,10 @@ class TestCleanupStaleEntities:
             return mock_registry
 
         _cleanup_stale_entities(
-            mock_hass, mock_config_entry, outputs, entity_registry_getter=get_registry
+            mock_hass,
+            mock_config_entry,
+            outputs,
+            entity_registry_getter=get_registry,
         )
 
         mock_registry.async_remove.assert_not_called()
@@ -711,6 +720,10 @@ class TestAsyncSetupEntry:
                 ),
                 patch(
                     "custom_components.triad_ams.media_player._remove_orphaned_devices"
+                ),
+                patch.object(
+                    TriadAmsSourceMediaPlayer,
+                    "async_write_ha_state",
                 ),
             ):
                 await async_setup_entry(
